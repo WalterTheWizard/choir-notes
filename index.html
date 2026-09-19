@@ -17,7 +17,7 @@
  <aside class="tools">
   <section><h2>Part</h2><div id="part-buttons" class="part-buttons"></div></section>
   <section><h2>Voice</h2><div class="segmented"><button data-voice="1" class="active">Voice 1</button><button data-voice="2">Voice 2</button></div></section>
-  <section><h2>Note length</h2><div class="duration-grid"><button data-duration="4"><span>𝅝</span>Whole</button><button data-duration="2"><span>𝅗𝅥</span>Half</button><button data-duration="1" class="active"><span>♩</span>Quarter</button><button data-duration="0.5"><span>♪</span>Eighth</button></div><div class="checks"><label><input id="dotted" type="checkbox"> Dotted</label><label><input id="rest-mode" type="checkbox"> Rest</label></div></section>
+  <section><h2>Note length</h2><div class="duration-grid"><button data-duration="4"><span>𝅝</span>Whole</button><button data-duration="2"><span>𝅗𝅥</span>Half</button><button data-duration="1" class="active"><span>♩</span>Quarter</button><button data-duration="0.5"><span>♪</span>Eighth</button></div><div class="checks"><label><input id="dotted" type="checkbox"> Dotted</label><label><input id="rest-mode" type="checkbox"> Rest</label><label><input id="chord-mode" type="checkbox"> Chord mode</label><label><input id="shape-mode" type="checkbox"> Aiken shapes</label></div></section>
   <section><h2>Accidental</h2><div class="segmented"><button data-accidental="" class="active">None</button><button data-accidental="#">♯</button><button data-accidental="b">♭</button><button data-accidental="n">♮</button></div></section>
   <section><h2>Selected note</h2><label class="wide">Lyric syllable<input id="lyric" placeholder="e.g. Love"></label><div class="row"><button id="apply-lyric">Apply lyric</button><button id="delete-note" class="danger">Delete</button></div></section>
   <section><h2>Edit</h2><div class="row"><button id="undo">↶ Undo</button><button id="add-measure">+ 4 measures</button></div></section>
@@ -25,7 +25,7 @@
  <section class="workspace">
   <div class="transport"><div><button id="play-all" class="primary">▶ Play all</button><button id="play-part">▷ Selected part</button><button id="stop">■ Stop</button></div><span id="cursor-help"></span></div>
   <div class="paper-wrap"><div class="paper"><div class="score-heading"><h1 id="score-title">Untitled anthem</h1><p id="score-subtitle"></p></div><svg id="score" role="img" aria-label="Editable choir score"></svg></div></div>
-  <div class="shortcuts"><b>Shortcuts:</b> 1 whole · 2 half · 4 quarter · 8 eighth · R rest · . dotted · Delete · Ctrl+Z undo · Space play</div>
+  <div class="shortcuts"><b>Shortcuts:</b> 1 whole · 2 half · 4 quarter · 8 eighth · R rest · C chord · S shapes · . dotted · Delete · Ctrl+Z undo · Space play</div>
  </section>
 </main><div id="toast" class="toast" role="status"></div>
 </body></html>
