@@ -11,7 +11,7 @@
  <label>Key<select id="key"><option>C major</option><option>G major</option><option>D major</option><option>F major</option><option>E♭ major</option></select></label>
  <label>Time<select id="time"><option>4/4</option><option>3/4</option><option>6/8</option></select></label>
  <label>Tempo<input id="tempo" type="number" min="40" max="220" value="92"></label>
- <div class="setup-actions"><button id="new-score">New</button><button id="export-ly" class="gold">Export LilyPond</button></div>
+ <div class="setup-actions"><button id="new-score">New</button><label>Export as<select id="export-format" title="PDF typesetting uses Hacklily's online LilyPond renderer."><option value="ly">LilyPond code (.ly)</option><option value="pdf">LilyPond PDF (.pdf, online)</option></select></label><button id="export-score" class="gold">Export</button></div>
 </section>
 <main>
  <aside class="tools">
