@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Choir Notes</title><meta name="description" content="A choir-first notation editor.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2318273f'/%3E%3Cellipse cx='25' cy='43' rx='11' ry='8' fill='%23e3a629' transform='rotate(-18 25 43)'/%3E%3Cpath d='M34 42V12h5v30z' fill='%23e3a629'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css"><script src="app.js" defer></script></head>
+<body>
+<header class="topbar"><div class="brand"><b>♪</b> Choir Notes</div><input id="title" value="Untitled anthem" aria-label="Score title"><span id="save-state">Loading editor…</span></header>
+<section class="setup">
+ <label>Template<select id="template"><option value="trio">Trio · SAB</option><option value="satb">Choir · SATB</option><option value="ttbb">Men · TTBB</option></select></label>
+ <label>Key<select id="key"><option>C major</option><option>G major</option><option>D major</option><option>F major</option><option>E♭ major</option></select></label>
+ <label>Time<select id="time"><option>4/4</option><option>3/4</option><option>6/8</option></select></label>
+ <label>Tempo<input id="tempo" type="number" min="40" max="220" value="92"></label>
+ <div class="setup-actions"><button id="new-score">New</button><button id="export-ly" class="gold">Export LilyPond</button></div>
+</section>
+<main>
+ <aside class="tools">
+  <section><h2>Part</h2><div id="part-buttons" class="part-buttons"></div></section>
+  <section><h2>Voice</h2><div class="segmented"><button data-voice="1" class="active">Voice 1</button><button data-voice="2">Voice 2</button></div></section>
+  <section><h2>Note length</h2><div class="duration-grid"><button data-duration="4"><span>𝅝</span>Whole</button><button data-duration="2"><span>𝅗𝅥</span>Half</button><button data-duration="1" class="active"><span>♩</span>Quarter</button><button data-duration="0.5"><span>♪</span>Eighth</button></div><div class="checks"><label><input id="dotted" type="checkbox"> Dotted</label><label><input id="rest-mode" type="checkbox"> Rest</label></div></section>
+  <section><h2>Accidental</h2><div class="segmented"><button data-accidental="" class="active">None</button><button data-accidental="#">♯</button><button data-accidental="b">♭</button><button data-accidental="n">♮</button></div></section>
+  <section><h2>Selected note</h2><label class="wide">Lyric syllable<input id="lyric" placeholder="e.g. Love"></label><div class="row"><button id="apply-lyric">Apply lyric</button><button id="delete-note" class="danger">Delete</button></div></section>
+  <section><h2>Edit</h2><div class="row"><button id="undo">↶ Undo</button><button id="add-measure">+ 4 measures</button></div></section>
+ </aside>
+ <section class="workspace">
+  <div class="transport"><div><button id="play-all" class="primary">▶ Play all</button><button id="play-part">▷ Selected part</button><button id="stop">■ Stop</button></div><span id="cursor-help"></span></div>
+  <div class="paper-wrap"><div class="paper"><div class="score-heading"><h1 id="score-title">Untitled anthem</h1><p id="score-subtitle"></p></div><svg id="score" role="img" aria-label="Editable choir score"></svg></div></div>
+  <div class="shortcuts"><b>Shortcuts:</b> 1 whole · 2 half · 4 quarter · 8 eighth · R rest · . dotted · Delete · Ctrl+Z undo · Space play</div>
+ </section>
+</main><div id="toast" class="toast" role="status"></div>
+</body></html>
