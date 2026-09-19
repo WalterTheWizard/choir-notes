@@ -27,7 +27,7 @@ function render(){
  const box=$('#part-buttons');box.replaceChildren();parts().forEach((p,i)=>{const b=document.createElement('button');b.textContent=p[0];b.className=i===state.activePart?'active':'';b.onclick=()=>{state.activePart=i;clearSelection();render()};box.append(b)});
  const chosen=state.notes.filter(n=>selectedIds.has(n.id)),stem=chosen.length&&chosen.every(n=>(n.stem||'auto')===(chosen[0].stem||'auto'))?(chosen[0].stem||'auto'):'';
  $$('[data-stem]').forEach(b=>{b.classList.toggle('active',b.dataset.stem===stem);b.disabled=!chosen.length});
- $('#beam-notes').disabled=chosen.length<2;$('#unbeam-notes').disabled=!chosen.some(n=>n.beamGroup);$('#selection-help').textContent=chosen.length>1?`${chosen.length} notes selected.`:'Shift-click eighth notes to select a group.';
+ $('#beam-notes').disabled=chosen.length<2;$('#unbeam-notes').disabled=!chosen.some(n=>n.beamGroup);$('#selection-help').textContent=chosen.length>1?`${chosen.length} notes selected.`:'Turn on Select group, then tap eighth notes.';
  const d={4:'whole',2:'half',1:'quarter',.5:'eighth'}[input.duration],mode=input.chord&&!input.rest?' · chord mode':'';$('#cursor-help').textContent=`Entering ${input.dotted?'dotted ':''}${input.rest?'rest':d+' note'} in ${parts()[state.activePart][0]}, voice ${input.voice}${mode}.`;
  draw();save();
 }
@@ -72,7 +72,7 @@ function drawEvent(root,n,left,mw,gap,sysH,beam){
  const {x,y}=pos(n,left,mw,gap,sysH),g=node('g',{class:'event'+(selectedIds.has(n.id)?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
  if(n.rest){g.append(node('rect',{x:x-7,y:y+10,width:14,height:6,rx:1,class:'rest-mark'}));txt(g,'𝄽',{x:x-8,y:y+20,class:'rest-glyph'})}
  else{if(y<55||y>95)g.append(node('line',{x1:x-14,y1:y,x2:x+14,y2:y,class:'ledger'}));g.append(headShape(n,x,y));const up=beam?beam.up:effectiveStem(n)==='up',stemX=beam?beam.stemX:x+(up?8:-8),stemY=beam?beam.beamY:y+(up?-34:34);if(n.duration<4)g.append(node('line',{x1:stemX,y1:y,x2:stemX,y2:stemY,class:'stem'}));if(n.duration===.5&&!beam)g.append(node('path',{d:up?`M${x+8} ${y-34}q20 8 8 24`:`M${x-8} ${y+34}q-20-8-8-24`,class:'flag'}));if(n.accidental)txt(g,glyph(n.accidental),{x:x-24,y:y+6,class:'accidental'});if(n.dotted)g.append(node('circle',{cx:x+17,cy:y,r:2.3,class:'dot'}))}
- if(n.lyric)txt(g,n.lyric,{x,y:y+64,class:'lyric'});g.addEventListener('pointerdown',e=>{e.stopPropagation();if(e.shiftKey){selectedIds.has(n.id)&&selectedIds.size>1?selectedIds.delete(n.id):selectedIds.add(n.id)}else{selectedIds.clear();selectedIds.add(n.id)}selected=n.id;state.activePart=n.part;$('#lyric').value=n.lyric||'';render()});root.append(g);
+ if(n.lyric)txt(g,n.lyric,{x,y:y+64,class:'lyric'});g.addEventListener('pointerdown',e=>{e.stopPropagation();if(e.shiftKey||$('#multi-select').checked){selectedIds.has(n.id)&&selectedIds.size>1?selectedIds.delete(n.id):selectedIds.add(n.id)}else{selectedIds.clear();selectedIds.add(n.id)}selected=n.id;state.activePart=n.part;$('#lyric').value=n.lyric||'';render()});root.append(g);
 }
 function enter(e,hit,left,mw,gap,sysH){
  const root=$('#score'),q=root.createSVGPoint();q.x=e.clientX;q.y=e.clientY;const matrix=root.getScreenCTM();if(!matrix)return;const pt=q.matrixTransform(matrix.inverse()),part=+hit.dataset.part,sys=+hit.dataset.system,staffY=55+sys*sysH+part*gap,mi=Math.max(0,Math.min(3,Math.floor((pt.x-left)/mw))),measure=sys*4+mi;if(measure>=state.measures)return;
