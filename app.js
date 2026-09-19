@@ -46,13 +46,14 @@ function headShape(n,x,y){
  const cls='note-head '+(n.duration<2?'filled':'open');
  if(!state.shapedNotes)return node('ellipse',{cx:x,cy:y,rx:9,ry:6,transform:`rotate(-18 ${x} ${y})`,class:cls});
  const letters=['C','D','E','F','G','A','B'],tonics={'C major':'C','G major':'G','D major':'D','F major':'F','E♭ major':'E'},degree=(letters.indexOf(n.pitch[0])-letters.indexOf(tonics[state.key])+7)%7;
- if(degree===0)return node('polygon',{points:`${x-9},${y+6} ${x+9},${y+6} ${x},${y-8}`,class:cls});
- if(degree===1)return node('path',{d:`M${x-9} ${y+5} Q${x} ${y-10} ${x+9} ${y+5} Z`,class:cls});
- if(degree===2)return node('polygon',{points:`${x},${y-8} ${x+10},${y} ${x},${y+8} ${x-10},${y}`,class:cls});
- if(degree===3)return node('polygon',{points:`${x-9},${y-7} ${x+9},${y+6} ${x-9},${y+6}`,class:cls});
- if(degree===4)return node('ellipse',{cx:x,cy:y,rx:9,ry:6,transform:`rotate(-18 ${x} ${y})`,class:cls});
- if(degree===5)return node('rect',{x:x-8,y:y-6,width:16,height:12,transform:`rotate(-18 ${x} ${y})`,class:cls});
- return node('polygon',{points:`${x-9},${y-6} ${x+9},${y-6} ${x},${y+8}`,class:cls});
+ // Aiken seven-shape heads, optically balanced to the ordinary oval head.
+ if(degree===0)return node('path',{d:`M${x-9.5} ${y+5.5} L${x+9.5} ${y+5.5} L${x} ${y-7.5} Z`,class:cls});
+ if(degree===1)return node('path',{d:`M${x-9} ${y-4.5} L${x+9} ${y-4.5} C${x+8.5} ${y+3.5} ${x+4} ${y+6.5} ${x} ${y+6.5} C${x-4} ${y+6.5} ${x-8.5} ${y+3.5} ${x-9} ${y-4.5} Z`,class:cls});
+ if(degree===2)return node('path',{d:`M${x-10} ${y} L${x} ${y-5.5} L${x+10} ${y} L${x} ${y+5.5} Z`,class:cls});
+ if(degree===3)return node('path',{d:`M${x-9} ${y-5.5} L${x+9} ${y-5.5} L${x+9} ${y+5.5} Z`,class:cls});
+ if(degree===4)return node('ellipse',{cx:x,cy:y,rx:9.5,ry:5.8,transform:`rotate(-18 ${x} ${y})`,class:cls});
+ if(degree===5)return node('rect',{x:x-9,y:y-5.2,width:18,height:10.4,rx:.7,class:cls});
+ return node('path',{d:`M${x-9} ${y-2.5} L${x-4} ${y-6} L${x+4} ${y-6} L${x+9} ${y-2.5} L${x} ${y+6} Z`,class:cls});
 }
 function drawEvent(root,n,left,mw,gap,sysH){
  const {x,y}=pos(n,left,mw,gap,sysH),g=node('g',{class:'event'+(n.id===selected?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
