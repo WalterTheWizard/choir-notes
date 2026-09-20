@@ -72,10 +72,17 @@ function headShape(n,x,y){
  if(degree===5)return node('rect',{x:x-9,y:y-5.2,width:18,height:10.4,rx:.7,class:cls});
  return node('path',{d:`M${x-9} ${y-2.5} L${x-4} ${y-6} L${x+4} ${y-6} L${x+9} ${y-2.5} L${x} ${y+6} Z`,class:cls});
 }
+function drawRest(g,n,x,staffY){
+ if(n.duration===4)g.append(node('rect',{x:x-8,y:staffY+10,width:16,height:5,rx:.7,class:'rest-symbol'}));
+ else if(n.duration===2)g.append(node('rect',{x:x-8,y:staffY+15,width:16,height:5,rx:.7,class:'rest-symbol'}));
+ else if(n.duration===.5){g.append(node('circle',{cx:x+4,cy:staffY+11,r:4.2,class:'rest-symbol'}));g.append(node('path',{d:`M${x+7} ${staffY+12} C${x+5} ${staffY+20} ${x+1} ${staffY+27} ${x-3} ${staffY+34}`,class:'rest-stroke'}))}
+ else g.append(node('path',{d:`M${x+2} ${staffY+3} L${x-5} ${staffY+15} L${x+2} ${staffY+21} L${x-2} ${staffY+27} C${x+6} ${staffY+25} ${x+8} ${staffY+32} ${x+4} ${staffY+36} C${x} ${staffY+39} ${x-5} ${staffY+34} ${x-4} ${staffY+31} C${x} ${staffY+33} ${x+2} ${staffY+31} ${x} ${staffY+28} L${x-7} ${staffY+21} L${x} ${staffY+10} Z`,class:'rest-symbol'}));
+ if(n.dotted)g.append(node('circle',{cx:x+15,cy:staffY+21,r:2.3,class:'dot'}));
+}
 function drawEvent(root,n,left,mw,gap,sysH,beam){
- const {x,y}=pos(n,left,mw,gap,sysH),g=node('g',{class:'event'+(selectedIds.has(n.id)?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
- if(n.rest){g.append(node('rect',{x:x-7,y:y+10,width:14,height:6,rx:1,class:'rest-mark'}));txt(g,'𝄽',{x:x-8,y:y+20,class:'rest-glyph'})}
- else{if(y<55||y>95)g.append(node('line',{x1:x-14,y1:y,x2:x+14,y2:y,class:'ledger'}));g.append(headShape(n,x,y));const up=beam?beam.up:effectiveStem(n)==='up',stemX=beam?beam.stemX:x+(up?8:-8),stemY=beam?beam.beamY:y+(up?-34:34);if(n.duration<4)g.append(node('line',{x1:stemX,y1:y,x2:stemX,y2:stemY,class:'stem'}));if(n.duration===.5&&!beam){const sx=x+(up?8:-8),sy=y+(up?-34:34),d=up?`M${sx} ${sy} C${sx+3} ${sy+6} ${sx+16} ${sy+7} ${sx+18} ${sy+16} C${sx+19} ${sy+23} ${sx+14} ${sy+27} ${sx+10} ${sy+29} C${sx+14} ${sy+20} ${sx+10} ${sy+14} ${sx} ${sy+11} Z`:`M${sx} ${sy} C${sx-3} ${sy-6} ${sx-16} ${sy-7} ${sx-18} ${sy-16} C${sx-19} ${sy-23} ${sx-14} ${sy-27} ${sx-10} ${sy-29} C${sx-14} ${sy-20} ${sx-10} ${sy-14} ${sx} ${sy-11} Z`;g.append(node('path',{d,class:'flag'}))}if(n.accidental)txt(g,glyph(n.accidental),{x:x-24,y:y+6,class:'accidental'});if(n.dotted)g.append(node('circle',{cx:x+17,cy:y,r:2.3,class:'dot'}))}
+ const {x,y}=pos(n,left,mw,gap,sysH),staffY=55+Math.floor(n.measure/4)*sysH+n.part*gap,g=node('g',{class:'event'+(selectedIds.has(n.id)?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
+ if(n.rest)drawRest(g,n,x,staffY);
+ else{if(y<55||y>95)g.append(node('line',{x1:x-14,y1:y,x2:x+14,y2:y,class:'ledger'}));g.append(headShape(n,x,y));const up=beam?beam.up:effectiveStem(n)==='up',stemX=beam?beam.stemX:x+(up?8:-8),stemY=beam?beam.beamY:y+(up?-34:34);if(n.duration<4)g.append(node('line',{x1:stemX,y1:y,x2:stemX,y2:stemY,class:'stem'}));if(n.duration===.5&&!beam){const sx=x+(up?8:-8),sy=y+(up?-34:34),d=up?`M${sx} ${sy} C${sx+3} ${sy+6} ${sx+16} ${sy+7} ${sx+18} ${sy+16} C${sx+19} ${sy+23} ${sx+14} ${sy+27} ${sx+10} ${sy+29} C${sx+14} ${sy+20} ${sx+10} ${sy+14} ${sx} ${sy+11} Z`:`M${sx} ${sy} C${sx+3} ${sy-6} ${sx+16} ${sy-7} ${sx+18} ${sy-16} C${sx+19} ${sy-23} ${sx+14} ${sy-27} ${sx+10} ${sy-29} C${sx+14} ${sy-20} ${sx+10} ${sy-14} ${sx} ${sy-11} Z`;g.append(node('path',{d,class:'flag'}))}if(n.accidental)txt(g,glyph(n.accidental),{x:x-24,y:y+6,class:'accidental'});if(n.dotted)g.append(node('circle',{cx:x+17,cy:y,r:2.3,class:'dot'}))}
  if(n.lyric)txt(g,n.lyric,{x,y:y+64,class:'lyric'});g.addEventListener('pointerdown',e=>{e.stopPropagation();if(e.shiftKey||$('#multi-select').checked){selectedIds.has(n.id)&&selectedIds.size>1?selectedIds.delete(n.id):selectedIds.add(n.id)}else{selectedIds.clear();selectedIds.add(n.id)}selected=n.id;state.activePart=n.part;$('#lyric').value=n.lyric||'';render()});root.append(g);
 }
 function enter(e,hit,left,mw,gap,sysH){
