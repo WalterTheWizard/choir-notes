@@ -100,7 +100,29 @@ $('#undo').onclick=()=>{if(history.length){state=JSON.parse(history.pop());clear
 $('#add-measure').onclick=()=>{snap();state.measures+=4;render();toast('Four measures added.')};
 $('#new-score').onclick=()=>{if(confirm('Begin a new score?')){snap();state=fresh();clearSelection();render()}};
 function stop(){timers.forEach(clearTimeout);timers=[];if(audio){audio.close();audio=null}$$('.playing').forEach(x=>x.classList.remove('playing'))}
-function play(partOnly=false){stop();const ns=state.notes.filter(n=>!n.rest&&(!partOnly||n.part===state.activePart)).sort((a,b)=>a.measure*beats()+a.beat-b.measure*beats()-b.beat);if(!ns.length)return toast('There are no notes to play.');audio=new(window.AudioContext||window.webkitAudioContext)();const sec=60/state.tempo,start=audio.currentTime+.08;ns.forEach(n=>{const at=(n.measure*beats()+n.beat)*sec,dur=n.duration*(n.dotted?1.5:1)*sec*.88,o=audio.createOscillator(),g=audio.createGain();o.type='triangle';o.frequency.value=freq(n.pitch);g.gain.setValueAtTime(.0001,start+at);g.gain.exponentialRampToValueAtTime(partOnly?.16:.08,start+at+.02);g.gain.exponentialRampToValueAtTime(.0001,start+at+dur);o.connect(g).connect(audio.destination);o.start(start+at);o.stop(start+at+dur+.03);timers.push(setTimeout(()=>$('[data-id="'+n.id+'"]').classList.add('playing'),at*1000));timers.push(setTimeout(()=>$('[data-id="'+n.id+'"]').classList.remove('playing'),(at+dur)*1000))});const n=ns.at(-1);timers.push(setTimeout(stop,(n.measure*beats()+n.beat+n.duration)*sec*1000+300))}
+function choirRoom(ctx){
+ const length=Math.floor(ctx.sampleRate*1.65),impulse=ctx.createBuffer(2,length,ctx.sampleRate);
+ for(let channel=0;channel<2;channel++){const data=impulse.getChannelData(channel);for(let i=0;i<length;i++){const fade=(1-i/length)**2.6;data[i]=(Math.random()*2-1)*fade}}
+ const convolver=ctx.createConvolver();convolver.buffer=impulse;return convolver;
+}
+function choirVoice(ctx,dry,wet,hz,when,duration,level,part){
+ const finish=when+duration,release=.24,source=ctx.createGain(),body=ctx.createBiquadFilter(),voice=ctx.createGain(),pan=ctx.createStereoPanner();
+ body.type='lowpass';body.frequency.value=part<2?3600:2800;body.Q.value=.7;pan.pan.value=Math.max(-.42,Math.min(.42,(part-(parts().length-1)/2)*.28));
+ voice.gain.setValueAtTime(.0001,when);voice.gain.exponentialRampToValueAtTime(level,when+.11);voice.gain.setValueAtTime(level,Math.max(when+.12,finish-.09));voice.gain.exponentialRampToValueAtTime(.0001,finish+release);
+ source.connect(body).connect(voice).connect(pan);pan.connect(dry);pan.connect(wet);
+ [[720,5.5,.8],[1120,7,.42],[2550,10,.13]].forEach(([frequency,q,amount])=>{const filter=ctx.createBiquadFilter(),gain=ctx.createGain();filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=q;gain.gain.value=amount;source.connect(filter).connect(gain).connect(voice)});
+ const vibrato=ctx.createOscillator(),vibratoDepth=ctx.createGain();vibrato.frequency.value=5.1+(part*.12);vibratoDepth.gain.setValueAtTime(0,when);vibratoDepth.gain.linearRampToValueAtTime(Math.max(1.2,hz*.006),when+.28);vibrato.connect(vibratoDepth);
+ [-5,4].forEach((detune,index)=>{const osc=ctx.createOscillator(),oscGain=ctx.createGain();osc.type=index?'triangle':'sawtooth';osc.frequency.value=hz;osc.detune.value=detune+(part*1.2);oscGain.gain.value=index?.34:.16;vibratoDepth.connect(osc.frequency);osc.connect(oscGain).connect(source);osc.start(when);osc.stop(finish+release+.04)});
+ vibrato.start(when);vibrato.stop(finish+release+.04);
+}
+function play(partOnly=false){
+ stop();const ns=state.notes.filter(n=>!n.rest&&(!partOnly||n.part===state.activePart)).sort((a,b)=>a.measure*beats()+a.beat-b.measure*beats()-b.beat);if(!ns.length)return toast('There are no notes to play.');
+ audio=new(window.AudioContext||window.webkitAudioContext)();const master=audio.createGain(),compressor=audio.createDynamicsCompressor(),dry=audio.createGain(),wet=audio.createGain(),room=choirRoom(audio),sec=60/state.tempo,start=audio.currentTime+.1;
+ master.gain.value=.72;compressor.threshold.value=-18;compressor.knee.value=18;compressor.ratio.value=4;compressor.attack.value=.012;compressor.release.value=.22;dry.gain.value=.9;wet.gain.value=.18;dry.connect(master);wet.connect(room).connect(master);master.connect(compressor).connect(audio.destination);
+ const notesAtOnce=new Map();ns.forEach(n=>{const key=`${n.measure}:${n.beat}`;notesAtOnce.set(key,(notesAtOnce.get(key)||0)+1)});
+ ns.forEach(n=>{const at=(n.measure*beats()+n.beat)*sec,dur=n.duration*(n.dotted?1.5:1)*sec*.92,count=notesAtOnce.get(`${n.measure}:${n.beat}`)||1,level=(partOnly?.13:.105)/Math.sqrt(count);choirVoice(audio,dry,wet,freq(n.pitch),start+at,dur,level,n.part);timers.push(setTimeout(()=>document.querySelector(`[data-id="${CSS.escape(n.id)}"]`)?.classList.add('playing'),at*1000));timers.push(setTimeout(()=>document.querySelector(`[data-id="${CSS.escape(n.id)}"]`)?.classList.remove('playing'),(at+dur)*1000))});
+ const last=Math.max(...ns.map(n=>(n.measure*beats()+n.beat+n.duration*(n.dotted?1.5:1))*sec));timers.push(setTimeout(stop,last*1000+650));toast(partOnly?'Playing selected part with choir sound.':'Playing full choir.');
+}
 $('#play-all').onclick=()=>play();$('#play-part').onclick=()=>play(true);$('#stop').onclick=stop;
 function lilyPitch(p){const m=p.match(/^([A-G])([#b]?)(\d)$/),names={C:'c',D:'d',E:'e',F:'f',G:'g',A:'a',B:'b'};let s=names[m[1]]+(m[2]==='#'?'is':m[2]==='b'?'es':'');return s+(+m[3]>=4?"'".repeat(+m[3]-3):','.repeat(3-+m[3]))}
 function lilyDur(n){return({4:'1',2:'2',1:'4',.5:'8'}[n.duration]||'4')+(n.dotted?'.':'')}
