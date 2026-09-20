@@ -6,6 +6,7 @@ const templates={
 };
 const pitches={treble:['C6','B5','A5','G5','F5','E5','D5','C5','B4','A4','G4','F4','E4','D4','C4'],bass:['E4','D4','C4','B3','A3','G3','F3','E3','D3','C3','B2','A2','G2','F2','E2']};
 const semis={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+const CLERK_PUBLISHABLE_KEY='pk_test_YXdhcmUtY2ljYWRhLTY0ODMuY2xlcmsuYWNjb3VudHMuZGV2JA';
 const fresh=()=>({title:'Untitled anthem',template:'trio',key:'C major',time:'4/4',tempo:92,measures:8,activePart:0,notes:[]});
 let state=load()||fresh(),selected=null,selectedIds=new Set(),history=[],timers=[],audio=null;
 let input={voice:1,duration:1,dotted:false,rest:false,chord:false,accidental:''};
@@ -17,6 +18,9 @@ function beats(){return state.time==='3/4'||state.time==='6/8'?3:4}
 function node(name,a={}){const n=document.createElementNS(NS,name);Object.entries(a).forEach(([k,v])=>n.setAttribute(k,v));return n}
 function txt(parent,value,a={}){const n=node('text',a);n.textContent=value;parent.append(n);return n}
 function toast(v){const t=$('#toast');t.textContent=v;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1700)}
+function loadScript(src,attributes={}){return new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.async=true;script.crossOrigin='anonymous';Object.entries(attributes).forEach(([key,value])=>script.setAttribute(key,value));script.onload=resolve;script.onerror=()=>reject(new Error('Could not load Clerk.'));document.head.append(script)})}
+function showAuth(){const signedIn=!!window.Clerk?.user,$in=$('#sign-in'),$up=$('#sign-up'),$user=$('#user-button');$in.hidden=signedIn;$up.hidden=signedIn;$in.disabled=false;$up.disabled=false;$user.replaceChildren();if(signedIn)window.Clerk.mountUserButton($user,{appearance:{variables:{colorPrimary:'#20395e'}}})}
+async function initAuth(){const status=$('#save-state');try{const domain=atob(CLERK_PUBLISHABLE_KEY.split('_')[2]).slice(0,-1);await loadScript(`https://${domain}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js`,{'data-clerk-publishable-key':CLERK_PUBLISHABLE_KEY});await window.Clerk.load({appearance:{variables:{colorPrimary:'#20395e',colorText:'#152139'}}});$('#sign-in').onclick=()=>window.Clerk.openSignIn();$('#sign-up').onclick=()=>window.Clerk.openSignUp();window.Clerk.addListener(showAuth);showAuth()}catch(error){console.error(error);status.textContent='Account sign-in unavailable';status.classList.add('auth-error')}}
 function glyph(a){return a==='#'?'♯':a==='b'?'♭':a==='n'?'♮':''}
 function pitch(part,step,a=''){const p=pitches[parts()[part][2]][Math.max(0,Math.min(14,step))];return p[0]+(a==='n'?'':a)+p.slice(1)}
 function midi(p){const m=p.match(/^([A-G])([#b]?)(\d)$/);let n=(+m[3]+1)*12+semis[m[1]];return n+(m[2]==='#'?1:m[2]==='b'?-1:0)}
@@ -110,4 +114,4 @@ function renderLilyPdf(src){return new Promise((resolve,reject)=>{const ws=new W
 async function exportPdf(){const button=$('#export-score');button.disabled=true;button.textContent='Typesetting…';toast('Sending score to the online LilyPond renderer…');try{const base64=await renderLilyPdf(lilySource()),bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));download(new Blob([bytes],{type:'application/pdf'}),exportName('pdf'));toast('LilyPond PDF exported.')}catch(error){console.error(error);toast(error.message||'PDF export failed.')}finally{button.disabled=false;button.textContent='Export'}}
 $('#export-score').onclick=()=>$('#export-format').value==='pdf'?exportPdf():exportLy();
 addEventListener('keydown',e=>{if(e.target.matches('input,select'))return;if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();$('#undo').click()}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}else if(e.key===' '){e.preventDefault();play()}else if({'1':4,'2':2,'4':1,'8':.5}[e.key])$('[data-duration="'+{'1':4,'2':2,'4':1,'8':.5}[e.key]+'"]').click();else if(e.key.toLowerCase()==='r')$('#rest-mode').click();else if(e.key.toLowerCase()==='c')$('#chord-mode').click();else if(e.key.toLowerCase()==='s')$('#shape-mode').click();else if(e.key==='.')$('#dotted').click()});
-render();
+render();initAuth();
