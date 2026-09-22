@@ -2,6 +2,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],NS=
 const templates={
  trio:[['Soprano','S','treble'],['Alto','A','treble'],['Baritone','Bar.','bass']],
  satb:[['Soprano','S','treble'],['Alto','A','treble'],['Tenor','T','treble'],['Bass','B','bass']],
+ satbClosed:[['Soprano','S/A','treble',0,1],['Alto','S/A','treble',0,2],['Tenor','T/B','bass',1,1],['Bass','T/B','bass',1,2]],
  ttbb:[['Tenor I','T1','treble'],['Tenor II','T2','treble'],['Baritone','Bar.','bass'],['Bass','B','bass']]
 };
 const pitches={treble:['C6','B5','A5','G5','F5','E5','D5','C5','B4','A4','G4','F4','E4','D4','C4'],bass:['E4','D4','C4','B3','A3','G3','F3','E3','D3','C3','B2','A2','G2','F2','E2']};
@@ -14,6 +15,10 @@ function load(){try{return JSON.parse(localStorage.getItem('choir-notes-v2'))}ca
 function save(){try{localStorage.setItem('choir-notes-v2',JSON.stringify(state));$('#save-state').textContent='Saved on this device'}catch{$('#save-state').textContent='Editor ready'}}
 function snap(){history.push(JSON.stringify(state));if(history.length>60)history.shift()}
 function parts(){return templates[state.template]}
+function isClosed(){return state.template==='satbClosed'}
+function partStaff(part){return parts()[part]?.[3]??part}
+function partVoice(part){return parts()[part]?.[4]??1}
+function staves(){const map=new Map();parts().forEach((p,part)=>{const index=partStaff(part);if(!map.has(index))map.set(index,{index,label:p[1],clef:p[2],parts:[]});map.get(index).parts.push(part)});return[...map.values()]}
 function beats(){return state.time==='3/4'||state.time==='6/8'?3:4}
 function node(name,a={}){const n=document.createElementNS(NS,name);Object.entries(a).forEach(([k,v])=>n.setAttribute(k,v));return n}
 function txt(parent,value,a={}){const n=node('text',a);n.textContent=value;parent.append(n);return n}
@@ -26,9 +31,11 @@ function pitch(part,step,a=''){const p=pitches[parts()[part][2]][Math.max(0,Math
 function midi(p){const m=p.match(/^([A-G])([#b]?)(\d)$/);let n=(+m[3]+1)*12+semis[m[1]];return n+(m[2]==='#'?1:m[2]==='b'?-1:0)}
 function freq(p){return 440*2**((midi(p)-69)/12)}
 function render(){
+ if(isClosed())input.voice=partVoice(state.activePart);
  $('#title').value=state.title;$('#template').value=state.template;$('#key').value=state.key;$('#time').value=state.time;$('#tempo').value=state.tempo;$('#shape-mode').checked=!!state.shapedNotes;
- $('#score-title').textContent=state.title;$('#score-subtitle').textContent=`${state.template==='trio'?'SAB':state.template.toUpperCase()} · ${state.key} · ${state.time}`;
- const box=$('#part-buttons');box.replaceChildren();parts().forEach((p,i)=>{const b=document.createElement('button');b.textContent=p[0];b.className=i===state.activePart?'active':'';b.onclick=()=>{state.activePart=i;clearSelection();render()};box.append(b)});
+ $('#score-title').textContent=state.title;const templateName={trio:'SAB',satb:'SATB open',satbClosed:'SATB closed',ttbb:'TTBB'}[state.template]||state.template.toUpperCase();$('#score-subtitle').textContent=`${templateName} · ${state.key} · ${state.time}`;
+ const box=$('#part-buttons');box.replaceChildren();parts().forEach((p,i)=>{const b=document.createElement('button');b.textContent=p[0];b.className=i===state.activePart?'active':'';b.onclick=()=>{state.activePart=i;if(isClosed())input.voice=partVoice(i);clearSelection();render()};box.append(b)});
+ $$('[data-voice]').forEach(b=>{b.disabled=isClosed();b.classList.toggle('active',+b.dataset.voice===input.voice)});
  const chosen=state.notes.filter(n=>selectedIds.has(n.id)),stem=chosen.length&&chosen.every(n=>(n.stem||'auto')===(chosen[0].stem||'auto'))?(chosen[0].stem||'auto'):'';
  $$('[data-stem]').forEach(b=>{b.classList.toggle('active',b.dataset.stem===stem);b.disabled=!chosen.length});
  $('#beam-notes').disabled=chosen.length<2;$('#unbeam-notes').disabled=!chosen.some(n=>n.beamGroup);$('#selection-help').textContent=chosen.length>1?`${chosen.length} notes selected.`:'Turn on Select group, then tap eighth notes.';
@@ -36,11 +43,11 @@ function render(){
  draw();save();
 }
 function draw(){
- const root=$('#score'),left=195,mw=192.5,gap=82,pc=parts().length,systems=Math.ceil(state.measures/4),sysH=pc*gap+68,height=systems*sysH+35;
+ const root=$('#score'),left=195,mw=192.5,gap=82,staffDefs=staves(),pc=staffDefs.length,systems=Math.ceil(state.measures/4),sysH=pc*gap+68,height=systems*sysH+35;
  root.setAttribute('viewBox',`0 0 1000 ${height}`);root.style.height=Math.max(420,height)+'px';root.replaceChildren();
  for(let s=0;s<systems;s++)for(let p=0;p<pc;p++){
-  const y=55+s*sysH+p*gap,hit=node('rect',{x:left,y:y-24,width:mw*4,height:76,class:'staff-hit','data-part':p,'data-system':s});root.append(hit);
-  txt(root,parts()[p][1],{x:18,y:y+24,class:'part-label'});txt(root,parts()[p][2]==='bass'?'𝄢':'𝄞',{x:96,y:y+37,class:'clef'});
+  const staff=staffDefs[p],y=55+s*sysH+p*gap,hit=node('rect',{x:left,y:y-24,width:mw*4,height:76,class:'staff-hit','data-staff':staff.index,'data-system':s});root.append(hit);
+  txt(root,staff.label,{x:18,y:y+24,class:'part-label'});txt(root,staff.clef==='bass'?'𝄢':'𝄞',{x:96,y:y+37,class:'clef'});
   for(let l=0;l<5;l++)root.append(node('line',{x1:left,y1:y+l*10,x2:left+mw*4,y2:y+l*10,class:'staff-line'}));
   for(let m=0;m<=4;m++)root.append(node('line',{x1:left+m*mw,y1:y,x2:left+m*mw,y2:y+40,class:m===4?'bar-line end':'bar-line'}));
   if(p===0)for(let m=0;m<4;m++){const no=s*4+m+1;if(no<=state.measures)txt(root,String(no),{x:left+m*mw+7,y:y-10,class:'measure-number'})}const ts=state.time.split('/');txt(root,ts[0],{x:158,y:y+18,class:'time-number'});txt(root,ts[1],{x:158,y:y+39,class:'time-number'});
@@ -58,7 +65,7 @@ function beamLayout(left,mw,gap,sysH){
  }
  return{byNote,groups};
 }
-function pos(n,left,mw,gap,sysH){const s=Math.floor(n.measure/4),m=n.measure%4;return{x:left+m*mw+14+(n.beat/beats())*(mw-25),y:55+s*sysH+n.part*gap-20+n.step*5}}
+function pos(n,left,mw,gap,sysH){const s=Math.floor(n.measure/4),m=n.measure%4;return{x:left+m*mw+14+(n.beat/beats())*(mw-25),y:55+s*sysH+partStaff(n.part)*gap-20+n.step*5}}
 function headShape(n,x,y){
  const cls='note-head '+(n.duration<2?'filled':'open');
  if(!state.shapedNotes)return node('ellipse',{cx:x,cy:y,rx:9,ry:6,transform:`rotate(-18 ${x} ${y})`,class:cls});
@@ -80,15 +87,15 @@ function drawRest(g,n,x,staffY){
  if(n.dotted)g.append(node('circle',{cx:x+15,cy:staffY+21,r:2.3,class:'dot'}));
 }
 function drawEvent(root,n,left,mw,gap,sysH,beam){
- const {x,y}=pos(n,left,mw,gap,sysH),staffY=55+Math.floor(n.measure/4)*sysH+n.part*gap,g=node('g',{class:'event'+(selectedIds.has(n.id)?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
+ const {x,y}=pos(n,left,mw,gap,sysH),staffY=55+Math.floor(n.measure/4)*sysH+partStaff(n.part)*gap,g=node('g',{class:'event'+(selectedIds.has(n.id)?' selected':''),'data-id':n.id,tabindex:0,role:'button'});
  if(n.rest)drawRest(g,n,x,staffY);
- else{if(y<55||y>95)g.append(node('line',{x1:x-14,y1:y,x2:x+14,y2:y,class:'ledger'}));g.append(headShape(n,x,y));const up=beam?beam.up:effectiveStem(n)==='up',stemX=beam?beam.stemX:x+(up?8:-8),stemY=beam?beam.beamY:y+(up?-34:34);if(n.duration<4)g.append(node('line',{x1:stemX,y1:y,x2:stemX,y2:stemY,class:'stem'}));if(n.duration===.5&&!beam){const sx=x+(up?8:-8),sy=y+(up?-34:34),d=up?`M${sx} ${sy} C${sx+3} ${sy+6} ${sx+16} ${sy+7} ${sx+18} ${sy+16} C${sx+19} ${sy+23} ${sx+14} ${sy+27} ${sx+10} ${sy+29} C${sx+14} ${sy+20} ${sx+10} ${sy+14} ${sx} ${sy+11} Z`:`M${sx} ${sy} C${sx+3} ${sy-6} ${sx+16} ${sy-7} ${sx+18} ${sy-16} C${sx+19} ${sy-23} ${sx+14} ${sy-27} ${sx+10} ${sy-29} C${sx+14} ${sy-20} ${sx+10} ${sy-14} ${sx} ${sy-11} Z`;g.append(node('path',{d,class:'flag'}))}if(n.accidental)txt(g,glyph(n.accidental),{x:x-24,y:y+6,class:'accidental'});if(n.dotted)g.append(node('circle',{cx:x+17,cy:y,r:2.3,class:'dot'}))}
+ else{if(y<staffY||y>staffY+40)g.append(node('line',{x1:x-14,y1:y,x2:x+14,y2:y,class:'ledger'}));g.append(headShape(n,x,y));const up=beam?beam.up:effectiveStem(n)==='up',stemX=beam?beam.stemX:x+(up?8:-8),stemY=beam?beam.beamY:y+(up?-34:34);if(n.duration<4)g.append(node('line',{x1:stemX,y1:y,x2:stemX,y2:stemY,class:'stem'}));if(n.duration===.5&&!beam){const sx=x+(up?8:-8),sy=y+(up?-34:34),d=up?`M${sx} ${sy} C${sx+3} ${sy+6} ${sx+16} ${sy+7} ${sx+18} ${sy+16} C${sx+19} ${sy+23} ${sx+14} ${sy+27} ${sx+10} ${sy+29} C${sx+14} ${sy+20} ${sx+10} ${sy+14} ${sx} ${sy+11} Z`:`M${sx} ${sy} C${sx+3} ${sy-6} ${sx+16} ${sy-7} ${sx+18} ${sy-16} C${sx+19} ${sy-23} ${sx+14} ${sy-27} ${sx+10} ${sy-29} C${sx+14} ${sy-20} ${sx+10} ${sy-14} ${sx} ${sy-11} Z`;g.append(node('path',{d,class:'flag'}))}if(n.accidental)txt(g,glyph(n.accidental),{x:x-24,y:y+6,class:'accidental'});if(n.dotted)g.append(node('circle',{cx:x+17,cy:y,r:2.3,class:'dot'}))}
  if(n.lyric)txt(g,n.lyric,{x,y:y+64,class:'lyric'});g.addEventListener('pointerdown',e=>{e.stopPropagation();if(e.shiftKey||$('#multi-select').checked){selectedIds.has(n.id)&&selectedIds.size>1?selectedIds.delete(n.id):selectedIds.add(n.id)}else{selectedIds.clear();selectedIds.add(n.id)}selected=n.id;state.activePart=n.part;$('#lyric').value=n.lyric||'';render()});root.append(g);
 }
 function enter(e,hit,left,mw,gap,sysH){
- const root=$('#score'),q=root.createSVGPoint();q.x=e.clientX;q.y=e.clientY;const matrix=root.getScreenCTM();if(!matrix)return;const pt=q.matrixTransform(matrix.inverse()),part=+hit.dataset.part,sys=+hit.dataset.system,staffY=55+sys*sysH+part*gap,mi=Math.max(0,Math.min(3,Math.floor((pt.x-left)/mw))),measure=sys*4+mi;if(measure>=state.measures)return;
+ const root=$('#score'),q=root.createSVGPoint();q.x=e.clientX;q.y=e.clientY;const matrix=root.getScreenCTM();if(!matrix)return;const pt=q.matrixTransform(matrix.inverse()),staff=+hit.dataset.staff,part=partStaff(state.activePart)===staff?state.activePart:staves().find(s=>s.index===staff).parts[0],sys=+hit.dataset.system,staffY=55+sys*sysH+staff*gap,mi=Math.max(0,Math.min(3,Math.floor((pt.x-left)/mw))),measure=sys*4+mi;if(measure>=state.measures)return;
  const mx=pt.x-(left+mi*mw),beat=Math.max(0,Math.min(beats()-.5,Math.round(((mx-14)/(mw-25))*beats()*2)/2)),step=Math.max(0,Math.min(14,Math.round((pt.y-(staffY-20))/5)));
- snap();state.activePart=part;if(!input.chord||input.rest)state.notes=state.notes.filter(n=>!(n.part===part&&n.voice===input.voice&&n.measure===measure&&n.beat===beat));else state.notes=state.notes.filter(n=>!(n.part===part&&n.voice===input.voice&&n.measure===measure&&n.beat===beat&&n.step===step));const n={id:String(Date.now())+Math.random(),part,voice:input.voice,measure,beat,step,duration:input.duration,dotted:input.dotted,rest:input.rest,accidental:input.accidental,pitch:pitch(part,step,input.accidental),lyric:'',stem:'auto'};state.notes.push(n);selected=n.id;selectedIds.clear();selectedIds.add(n.id);render();
+ const voice=isClosed()?partVoice(part):input.voice;snap();state.activePart=part;input.voice=voice;if(!input.chord||input.rest)state.notes=state.notes.filter(n=>!(n.part===part&&n.voice===voice&&n.measure===measure&&n.beat===beat));else state.notes=state.notes.filter(n=>!(n.part===part&&n.voice===voice&&n.measure===measure&&n.beat===beat&&n.step===step));const n={id:String(Date.now())+Math.random(),part,voice,measure,beat,step,duration:input.duration,dotted:input.dotted,rest:input.rest,accidental:input.accidental,pitch:pitch(part,step,input.accidental),lyric:'',stem:'auto'};state.notes.push(n);selected=n.id;selectedIds.clear();selectedIds.add(n.id);render();
 }
 function clearSelection(){selected=null;selectedIds.clear();$('#lyric').value=''}
 function activate(sel,b){$$(sel).forEach(x=>x.classList.toggle('active',x===b))}
@@ -100,7 +107,7 @@ $$('[data-stem]').forEach(b=>b.onclick=()=>{const notes=state.notes.filter(n=>se
 $('#beam-notes').onclick=()=>{const notes=state.notes.filter(n=>selectedIds.has(n.id)).sort((a,b)=>a.beat-b.beat);if(notes.length<2)return toast('Select at least two eighth notes.');const first=notes[0],valid=notes.every((n,i)=>!n.rest&&n.duration===.5&&!n.dotted&&n.part===first.part&&n.voice===first.voice&&n.measure===first.measure&&(i===0||Math.abs(n.beat-notes[i-1].beat-.5)<.01));if(!valid)return toast('Choose consecutive eighth notes in one voice and measure.');snap();const group='beam-'+Date.now()+'-'+Math.random();notes.forEach(n=>n.beamGroup=group);render();toast(`${notes.length} eighth notes beamed.`)};
 $('#unbeam-notes').onclick=()=>{const groups=new Set(state.notes.filter(n=>selectedIds.has(n.id)&&n.beamGroup).map(n=>n.beamGroup));if(!groups.size)return toast('Select a beamed note first.');snap();state.notes.forEach(n=>{if(groups.has(n.beamGroup))delete n.beamGroup});render();toast('Beam removed.')};
 $('#title').oninput=e=>{state.title=e.target.value||'Untitled anthem';render()};$('#key').onchange=e=>{state.key=e.target.value;render()};$('#time').onchange=e=>{snap();state.time=e.target.value;render()};$('#tempo').onchange=e=>{state.tempo=Math.max(40,Math.min(220,+e.target.value||92));render()};
-$('#template').onchange=e=>{snap();state.template=e.target.value;state.activePart=0;state.notes=[];clearSelection();render();toast('Template changed; score cleared.')};
+$('#template').onchange=e=>{snap();state.template=e.target.value;state.activePart=0;state.notes=[];input.voice=1;clearSelection();render();toast(isClosed()?'SATB closed score: S/A and T/B share staves.':'Template changed; score cleared.')};
 $('#apply-lyric').onclick=()=>{const n=state.notes.find(n=>n.id===selected);if(!n)return toast('Select a note first.');snap();n.lyric=$('#lyric').value.trim();render()};
 function remove(){if(!selectedIds.size)return;snap();state.notes=state.notes.filter(n=>!selectedIds.has(n.id));clearSelection();render()}$('#delete-note').onclick=remove;
 $('#undo').onclick=()=>{if(history.length){state=JSON.parse(history.pop());clearSelection();render()}};
@@ -135,7 +142,20 @@ function lilyPitch(p){const m=p.match(/^([A-G])([#b]?)(\d)$/),names={C:'c',D:'d'
 function lilyDur(n){return({4:'1',2:'2',1:'4',.5:'8'}[n.duration]||'4')+(n.dotted?'.':'')}
 function gaps(g){const out=[];for(const [b,d] of [[4,'1'],[2,'2'],[1,'4'],[.5,'8']])while(g>=b-.01){out.push('r'+d);g-=b}return out}
 function lilyVoice(part,voice){let out=[];for(let m=0;m<state.measures;m++){let cur=0,t=[],events=state.notes.filter(n=>Number(n.part)===part&&Number(n.voice??1)===voice&&Number(n.measure)===m).sort((a,b)=>Number(a.beat)-Number(b.beat)||Number(a.step)-Number(b.step)),groups=[],beamRanges=new Map();for(const n of events){let g=groups.find(g=>Number(g[0].beat)===Number(n.beat));g?g.push(n):groups.push([n]);if(n.beamGroup&&!n.rest&&n.duration===.5&&!n.dotted){const a=beamRanges.get(n.beamGroup)||[];a.push(n);beamRanges.set(n.beamGroup,a)}}for(const a of beamRanges.values())a.sort((x,y)=>x.beat-y.beat);for(const g of groups){const first=g[0],start=Number(first.beat);if(start>cur)t.push(...gaps(start-cur));const sounding=g.filter(n=>!n.rest),pitchToken=sounding.length>1?'<'+sounding.map(n=>lilyPitch(n.pitch)).join(' ')+'>':sounding.length?lilyPitch(sounding[0].pitch):'r',stem=first.stem==='up'?'\\stemUp ':first.stem==='down'?'\\stemDown ':'\\stemNeutral ',range=beamRanges.get(first.beamGroup),beamStart=range?.length>1&&range[0].id===first.id?'[':'',beamEnd=range?.length>1&&range.at(-1).id===first.id?']':'';t.push(stem+pitchToken+lilyDur(first)+beamStart+beamEnd);cur=Math.max(cur,start+Math.max(...g.map(n=>Number(n.duration)*(n.dotted?1.5:1))))}if(cur<beats())t.push(...gaps(beats()-cur));out.push(t.join(' ')+' |')}return out.join('\n    ')}
-function lilySource(){const km={'C major':'c \\major','G major':'g \\major','D major':'d \\major','F major':'f \\major','E♭ major':'ees \\major'},heads=state.shapedNotes?'\\aikenHeads ':'',ids=['partOne','partTwo','partThree','partFour'];let defs='',staves='';parts().forEach((p,i)=>{const id=ids[i],lyrics=state.notes.filter(n=>Number(n.part)===i&&Number(n.voice??1)===1&&!n.rest&&n.lyric).sort((a,b)=>Number(a.measure)-Number(b.measure)||Number(a.beat)-Number(b.beat)).map(n=>n.lyric.replace(/-/g,' -- ')).join(' ');defs+=`${id}Upper = { ${heads}\\autoBeamOff \\key ${km[state.key]} \\time ${state.time} \\tempo 4 = ${state.tempo}\n    ${lilyVoice(i,1)}\n}\n${id}Lower = { ${heads}\\autoBeamOff ${lilyVoice(i,2)} }\n${id}Lyrics = \\lyricmode { ${lyrics} }\n\n`;staves+=`    \\new Staff \\with { instrumentName = "${p[1]}" } <<\n      \\clef ${p[2]} \\new Voice = "${id}" { \\voiceOne \\${id}Upper }\n      \\new Voice { \\voiceTwo \\${id}Lower }\n      \\new Lyrics \\lyricsto "${id}" { \\${id}Lyrics }\n    >>\n`});return `\\version "2.24.0"\n\\header { title = "${state.title.replace(/"/g,'\\\"')}" tagline = ##f }\n\n${defs}\\score {\n  \\new ChoirStaff <<\n${staves}  >>\n  \\layout { }\n  \\midi { }\n}\n`}
+function lilyClosedSource(km,heads,ids){
+ let defs='';
+ parts().forEach((p,i)=>{const id=ids[i];defs+=`${id}Music = { ${heads}\\autoBeamOff\n    ${lilyVoice(i,partVoice(i))}\n}\n\n`});
+ const lyrics=state.notes.filter(n=>Number(n.part)===0&&!n.rest&&n.lyric).sort((a,b)=>Number(a.measure)-Number(b.measure)||Number(a.beat)-Number(b.beat)).map(n=>n.lyric.replace(/-/g,' -- ')).join(' ');
+ defs+=`partOneLyrics = \\lyricmode { ${lyrics} }\n\n`;
+ return `\\version "2.24.0"\n\\header { title = "${state.title.replace(/"/g,'\\\"')}" tagline = ##f }\n\n${defs}\\score {\n  \\new ChoirStaff <<\n    \\new Staff \\with { instrumentName = "S/A" } {\n      \\clef treble \\key ${km[state.key]} \\time ${state.time} \\tempo 4 = ${state.tempo}\n      <<\n        \\new Voice = "partOne" { \\voiceOne \\partOneMusic }\n        \\new Voice { \\voiceTwo \\partTwoMusic }\n        \\new Lyrics \\lyricsto "partOne" { \\partOneLyrics }\n      >>\n    }\n    \\new Staff \\with { instrumentName = "T/B" } {\n      \\clef bass \\key ${km[state.key]} \\time ${state.time}\n      <<\n        \\new Voice { \\voiceOne \\partThreeMusic }\n        \\new Voice { \\voiceTwo \\partFourMusic }\n      >>\n    }\n  >>\n  \\layout { }\n  \\midi { }\n}\n`;
+}
+function lilySource(){
+ const km={'C major':'c \\major','G major':'g \\major','D major':'d \\major','F major':'f \\major','E♭ major':'ees \\major'},heads=state.shapedNotes?'\\aikenHeads ':'',ids=['partOne','partTwo','partThree','partFour'];
+ if(isClosed())return lilyClosedSource(km,heads,ids);
+ let defs='',staves='';
+ parts().forEach((p,i)=>{const id=ids[i],lyrics=state.notes.filter(n=>Number(n.part)===i&&Number(n.voice??1)===1&&!n.rest&&n.lyric).sort((a,b)=>Number(a.measure)-Number(b.measure)||Number(a.beat)-Number(b.beat)).map(n=>n.lyric.replace(/-/g,' -- ')).join(' ');defs+=`${id}Upper = { ${heads}\\autoBeamOff \\key ${km[state.key]} \\time ${state.time} \\tempo 4 = ${state.tempo}\n    ${lilyVoice(i,1)}\n}\n${id}Lower = { ${heads}\\autoBeamOff ${lilyVoice(i,2)} }\n${id}Lyrics = \\lyricmode { ${lyrics} }\n\n`;staves+=`    \\new Staff \\with { instrumentName = "${p[1]}" } <<\n      \\clef ${p[2]} \\new Voice = "${id}" { \\voiceOne \\${id}Upper }\n      \\new Voice { \\voiceTwo \\${id}Lower }\n      \\new Lyrics \\lyricsto "${id}" { \\${id}Lyrics }\n    >>\n`});
+ return `\\version "2.24.0"\n\\header { title = "${state.title.replace(/"/g,'\\\"')}" tagline = ##f }\n\n${defs}\\score {\n  \\new ChoirStaff <<\n${staves}  >>\n  \\layout { }\n  \\midi { }\n}\n`;
+}
 function exportName(ext){return(state.title||'choir_score').replace(/[^a-z0-9]+/gi,'_')+'.'+ext}
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function exportLy(){download(new Blob([lilySource()],{type:'text/plain;charset=utf-8'}),exportName('ly'));toast('LilyPond code exported.')}
