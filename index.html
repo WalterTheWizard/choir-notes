@@ -3,7 +3,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Choir Notes</title><meta name="description" content="A choir-first notation editor.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2318273f'/%3E%3Cellipse cx='25' cy='43' rx='11' ry='8' fill='%23e3a629' transform='rotate(-18 25 43)'/%3E%3Cpath d='M34 42V12h5v30z' fill='%23e3a629'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="styles.css?v=closed-score-1"><script src="app.js?v=closed-score-1" defer></script></head>
+<link rel="stylesheet" href="styles.css?v=finale-roundtrip-1"><script src="app.js?v=finale-roundtrip-1" defer></script></head>
 <body>
 <header class="topbar"><div class="brand"><b>♪</b> Choir Notes</div><input id="title" value="Untitled anthem" aria-label="Score title"><div class="topbar-account"><span id="save-state">Loading editor…</span><div id="auth-area" class="auth-area" aria-label="Account"><button id="sign-in" disabled>Sign in</button><button id="sign-up" class="gold" disabled>Sign up</button><div id="user-button"></div></div></div></header>
 <section class="setup">
@@ -11,7 +11,7 @@
  <label>Key<select id="key"><option>C major</option><option>G major</option><option>D major</option><option>F major</option><option>E♭ major</option></select></label>
  <label>Time<select id="time"><option>4/4</option><option>3/4</option><option>6/8</option></select></label>
  <label>Tempo<input id="tempo" type="number" min="40" max="220" value="92"></label>
- <div class="setup-actions"><button id="new-score">New</button><label>Export as<select id="export-format" title="PDF typesetting uses Hacklily's online LilyPond renderer."><option value="ly">LilyPond code (.ly)</option><option value="pdf">LilyPond PDF (.pdf, online)</option></select></label><button id="export-score" class="gold">Export</button></div>
+ <div class="setup-actions"><button id="new-score">New</button><button id="import-musicxml" title="Import an uncompressed .musicxml or .xml file exported by Finale.">Import Finale</button><input id="musicxml-file" type="file" accept=".musicxml,.xml,application/vnd.recordare.musicxml+xml,application/xml,text/xml" hidden><label>Export as<select id="export-format" title="PDF typesetting uses Hacklily's online LilyPond renderer."><option value="ly">LilyPond code (.ly)</option><option value="pdf">LilyPond PDF (.pdf, online)</option><option value="musicxml">Finale / MusicXML (.musicxml)</option></select></label><button id="export-score" class="gold">Export</button></div>
 </section>
 <main>
  <aside class="tools">
