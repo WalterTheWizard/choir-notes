@@ -16,9 +16,6 @@ A choir-first browser notation editor built for quick a cappella arranging.
 
 Open `index.html` in a modern browser. No installation or build step is required.
 
-The privately hosted working copy is available at:
-https://choir-notes-caelan.bplarkridge.chatgpt.site
-
 ## Project status
 
 Choir Notes is an early working prototype. The notation and export systems are still being developed.
